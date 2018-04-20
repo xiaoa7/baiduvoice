@@ -1,19 +1,16 @@
+/**
+*支持频谱图
+**/
     navigator.getUserMedia = navigator.getUserMedia ||
         navigator.webkitGetUserMedia || navigator.mozGetUserMedia ||
         navigator.msGetUserMedia;
-
     var rec, intervalKey, gRecorder, door = false;
-
     var onFail = function(e) {
         console.log('Rejected!', e);
     };
     var onSuccess = function(stream) {
         rec = new SRecorder(stream);
     };
-
-    //var socket = io.connect('https://znyz.xiaoa7.top/asr');
-
-
     var SRecorder = function(stream) {
         config = {
             sampleBits: 16,
@@ -26,6 +23,35 @@
         var context = new AudioContext();
         var audioInput = context.createMediaStreamSource(stream);
         var recorder = context.createScriptProcessor(4096, 1, 1);
+        //
+        var canvasOne = document.getElementById('canvasOne');
+        ctx2 = canvasOne.getContext("2d");
+        var analyser=context.createAnalyser();
+        analyser.fftSize = 256;
+        audioInput.connect(analyser);
+
+        function drawSpectrum() {
+            var WIDTH = canvasOne.width;
+            var HEIGHT= canvasOne.height; 
+            var array =  new Uint8Array(128);
+            analyser.getByteFrequencyData(array);
+            ctx2.clearRect(0, 0, WIDTH, HEIGHT);
+            for ( var i = 0; i < (array.length); i++ ){
+                var value = array[i];
+                ctx2.fillRect(i*5,HEIGHT-value,3,HEIGHT);
+            }  /*        
+            for ( var i = 0; i < (array.length); i++ ){
+                var value = array[i];
+                ctx2.beginPath();
+                ctx2.arc(WIDTH/2, HEIGHT/2,value,0,360,false);
+                ctx2.lineWidth=5;
+                ctx2.strokeStyle="rgba("+value+","+value+",0,0.2)";
+                ctx2.stroke();//画空心圆
+                ctx2.closePath();         
+            }  */           
+            requestAnimationFrame(drawSpectrum);
+        };
+        drawSpectrum();
 
         var audioData = {
             size: 0 //录音文件长度
@@ -165,7 +191,6 @@
             audioData.input(e.inputBuffer.getChannelData(0));
         }
     };
-
     (function startRecording() {
         if (navigator.getUserMedia) {
             navigator.getUserMedia({ audio: true }, onSuccess, onFail);

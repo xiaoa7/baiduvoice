@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<head>
+    <title>AceFace++</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+    <script src="https://cdn.bootcss.com/socket.io/2.0.4/socket.io.slim.js"></script>
+</head>
+<body>
+<video height="300px" width="300px" autoplay="autoplay"/>
+<canvas id="canvas" height="250px" width="300px"/>
+<script type="text/javascript">
+    var socket = io.connect('http://localhost:2018');
+    socket.on('message', function(data){
+        console.log(data.message);
+    });
+    var video = document.querySelector('video');
+    var canvas = document.getElementById('canvas');
+    var context = canvas.getContext('2d');
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+    window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
+    let successFunc = (stream) => {
+        //alert('Succeed to get media!');
+        if (video.mozSrcObject !== undefined) {
+            //Firefox中，video.mozSrcObject最初为null，而不是未定义的，我们可以靠这个来检测Firefox的支持
+            video.mozSrcObject = stream;
+        }
+        else {
+            video.src = window.URL && window.URL.createObjectURL(stream) || stream;
+        }
+        getVideo()
+    }
+    let errorFunc = (e) => {
+        alert('Error！' + e);
+    }
+    (function () {
+            if (navigator.getUserMedia) {
+                navigator.getUserMedia({
+                    'video': {
+                        'optional': [{
+                            'sourceId': 0//0为前置摄像头，1为后置
+                        }]
+                    },
+                    'audio': true
+                }, successFunc, errorFunc);    //success是获取成功的回调函数
+            }
+            else {
+                alert('Native device media streaming (getUserMedia) not supported in this browser.');
+            }
+        }
+    )()
+    // 将视频帧绘制到Canvas对象上,Canvas每60ms切换帧，形成肉眼视频效果
+    let drawVideoAtCanvas = (video, context) => {
+        window.setInterval(function () {
+            context.drawImage(video, 0, 0, 300, 250);
+            let dataURL = canvas.toDataURL(); // 通过toDataURL转化为base64编
+            socket.emit('image', dataURL) // 每60s生成一个base64并传到传到后台
+        }, 60);
+    }
+    //视频
+    let getVideo = () => {
+        drawVideoAtCanvas(video, context);
+    }
+</script>
+</body>
+
